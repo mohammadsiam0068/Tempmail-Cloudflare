@@ -1,0 +1,14 @@
+{
+  "name": "ahcm-api",
+  "compatibility_date": "2026-02-17",
+  "assets": {
+    "directory": "./dist"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "ahcm-db",
+      "database_id": "6eae38d5-4526-4d7a-a8f0-94197c806d9b"
+    }
+  ]
+}
