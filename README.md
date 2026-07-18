@@ -73,6 +73,10 @@ Before deploying, open the file:
 src/lib/tempmail-api.ts
 ```
 
+```
+worker/src/index.ts
+```
+
 Add the domain name(s) you want to use as your temporary email domains. This must be done **before** you deploy the project as a Worker or a Page, otherwise the generated addresses won't match your Email Routing setup.
 
 ---
