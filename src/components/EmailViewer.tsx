@@ -68,18 +68,24 @@ const AttachmentItem = ({ attachment, emailId }: { attachment: EmailAttachment; 
 
 const EmailViewer = ({ message, onBack }: EmailViewerProps) => {
   const renderHtml = (html: string) => {
-    const blob = new Blob([html], { type: "text/html" });
+    const injected = `<!doctype html><html><head><base target="_blank"><meta charset="utf-8"><style>body{margin:0;font-family:system-ui,-apple-system,sans-serif;word-wrap:break-word}img{max-width:100%;height:auto}</style></head><body>${html}</body></html>`;
+    const blob = new Blob([injected], { type: "text/html" });
     const url = URL.createObjectURL(blob);
     return (
       <iframe
         src={url}
-        sandbox="allow-same-origin"
+        sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
         className="w-full min-h-[300px] border-0 bg-background rounded-lg"
         onLoad={(e) => {
           const iframe = e.currentTarget;
           try {
-            const body = iframe.contentDocument?.body;
+            const doc = iframe.contentDocument;
+            const body = doc?.body;
             if (body) iframe.style.height = body.scrollHeight + "px";
+            doc?.querySelectorAll("a").forEach((a) => {
+              a.setAttribute("target", "_blank");
+              a.setAttribute("rel", "noopener noreferrer");
+            });
           } catch {}
           URL.revokeObjectURL(url);
         }}
