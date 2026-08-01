@@ -14,7 +14,9 @@ import {
   TempEmail,
   EmailMessage,
 } from "@/lib/tempmail-api";
+import { decodeEmailParam } from "@/lib/share";
 import { useTheme } from "@/hooks/use-theme";
+
 import Preloader from "@/components/Preloader";
 import TopBar from "@/components/mobile/TopBar";
 import BottomNav, { Tab } from "@/components/mobile/BottomNav";
@@ -39,6 +41,7 @@ const Index = () => {
   const { theme, toggleTheme } = useTheme();
 
   // Preload notification sound
+  
   useEffect(() => {
   const a = new Audio("/notify.mp3");
   a.preload = "auto";
@@ -47,17 +50,28 @@ const Index = () => {
 }, []);
 
   useEffect(() => {
-    const saved = loadEmailFromStorage();
-    if (saved) {
-      setCurrentEmail(saved.email);
-      setEmailMode(saved.mode as EmailMode);
+    const param = new URLSearchParams(window.location.search).get("email");
+    const shared = param ? decodeEmailParam(param) : null;
+    if (shared) {
+      const email: TempEmail = { address: shared, domain: shared.split("@")[1] || "" };
+      setCurrentEmail(email);
+      setEmailMode("custom");
+      saveEmailToStorage(email, "custom");
+      window.history.replaceState({}, "", window.location.pathname);
     } else {
-      handleGenerate("random");
+      const saved = loadEmailFromStorage();
+      if (saved) {
+        setCurrentEmail(saved.email);
+        setEmailMode(saved.mode as EmailMode);
+      } else {
+        handleGenerate("random");
+      }
     }
     // Preloader for 1.4s minimum for stylish feel
     const t = setTimeout(() => setIsLoading(false), 1400);
     return () => clearTimeout(t);
   }, []);
+
 
   const refreshMessages = useCallback(async () => {
     if (!currentEmail) return;
