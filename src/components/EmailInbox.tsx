@@ -1,6 +1,6 @@
 import { Inbox, Clock, Paperclip, ChevronRight, MailOpen, RefreshCw, Copy, Check } from "lucide-react";
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useState, MouseEvent } from "react";
 import { toast } from "sonner";
 import { EmailMessage } from "@/lib/tempmail-api";
 import { timeAgo } from "@/lib/time";
@@ -55,7 +55,7 @@ function extractOtp(subject: string, preview: string): string | null {
 const EmailInbox = ({ messages, isRefreshing, onRefresh, onOpenMessage }: EmailInboxProps) => {
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const handleCopyOtp = async (e: React.MouseEvent, id: string, code: string) => {
+  const handleCopyOtp = async (e: MouseEvent, id: string, code: string) => {
     e.stopPropagation();
     await navigator.clipboard.writeText(code);
     setCopiedId(id);
