@@ -64,7 +64,7 @@ const Index = () => {
         setCurrentEmail(saved.email);
         setEmailMode(saved.mode as EmailMode);
       } else {
-        handleGenerate("random");
+        handleGenerate("natural");
       }
     }
     // Preloader for 1.4s minimum for stylish feel
