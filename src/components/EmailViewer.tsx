@@ -1,7 +1,5 @@
-import { ArrowLeft, Clock, User, Paperclip, Download, FileText, Image as ImageIcon, File, Copy, Check, KeyRound } from "lucide-react";
+import { ArrowLeft, Clock, User, Paperclip, Download, FileText, Image as ImageIcon, File } from "lucide-react";
 import { motion } from "framer-motion";
-import { useState } from "react";
-import { toast } from "sonner";
 import { EmailMessage, EmailAttachment, getAttachmentUrl } from "@/lib/tempmail-api";
 import { formatEmailDate } from "@/lib/time";
 
@@ -47,26 +45,6 @@ function getInitial(name: string) {
   return (name || "?").trim().charAt(0).toUpperCase();
 }
 
-function extractOtp(subject: string, text: string, html: string): string | null {
-  const stripped = html ? html.replace(/<[^>]+>/g, " ") : "";
-  const combined = `${subject}\n${text}\n${stripped}`;
-
-  const patterns = [
-    /(?:code|otp|pin|verification code|verify)[^\d]{0,15}(\d{4,8})\b/i,
-    /\b(\d{3}[- ]?\d{3})\b/,
-    /\b(\d{4,8})\b/,
-  ];
-
-  for (const pattern of patterns) {
-    const match = combined.match(pattern);
-    if (match && match[1]) {
-      const code = match[1].replace(/[-\s]/g, "");
-      if (code.length >= 4 && code.length <= 8) return code;
-    }
-  }
-  return null;
-}
-
 const AttachmentItem = ({ attachment, emailId }: { attachment: EmailAttachment; emailId: string }) => {
   const downloadUrl = getAttachmentUrl(emailId, attachment.id);
   return (
@@ -89,22 +67,6 @@ const AttachmentItem = ({ attachment, emailId }: { attachment: EmailAttachment; 
 };
 
 const EmailViewer = ({ message, onBack }: EmailViewerProps) => {
-  const [otpCopied, setOtpCopied] = useState(false);
-
-  const otpCode = extractOtp(
-    message.subject || "",
-    message.text_content || "",
-    message.html_content || ""
-  );
-
-  const handleCopyOtp = async () => {
-    if (!otpCode) return;
-    await navigator.clipboard.writeText(otpCode);
-    setOtpCopied(true);
-    toast.success("Code copied!");
-    setTimeout(() => setOtpCopied(false), 2000);
-  };
-
   const renderHtml = (html: string) => {
     const injected = `<!doctype html><html><head><base target="_blank"><meta charset="utf-8"><style>body{margin:0;font-family:system-ui,-apple-system,sans-serif;word-wrap:break-word}img{max-width:100%;height:auto}</style></head><body>${html}</body></html>`;
     const blob = new Blob([injected], { type: "text/html" });
@@ -205,33 +167,6 @@ const EmailViewer = ({ message, onBack }: EmailViewerProps) => {
             </div>
           )}
         </div>
-
-        {/* OTP Banner */}
-        {otpCode && (
-          <button
-            onClick={handleCopyOtp}
-            className="w-full flex items-center justify-between gap-3 bg-primary/10 border border-primary/30 rounded-2xl px-4 py-3 active:scale-[0.98] transition-all"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
-                <KeyRound className="w-4 h-4 text-primary" />
-              </div>
-              <div className="text-left">
-                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest">
-                  Verification code
-                </p>
-                <p className="font-mono text-lg font-bold text-foreground tracking-wider">
-                  {otpCode}
-                </p>
-              </div>
-            </div>
-            {otpCopied ? (
-              <Check className="w-5 h-5 text-primary shrink-0" />
-            ) : (
-              <Copy className="w-5 h-5 text-muted-foreground shrink-0" />
-            )}
-          </button>
-        )}
 
         {/* Body */}
         <div className="bg-card border border-border rounded-2xl p-4 glow-card">
