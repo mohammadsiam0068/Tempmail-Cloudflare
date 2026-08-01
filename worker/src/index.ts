@@ -2,7 +2,7 @@ export interface Env {
   DB: D1Database;
 }
 
-const ALLOWED_DOMAINS = ["uniquemethod.dpdns.org", "headquarters.eu.cc", "emporariesemail.eu.cc", "temporaries.email", "premiumify.eu.cc"];
+const ALLOWED_DOMAINS = ["uniquemethod.dpdns.org", "headquarters.eu.cc", "temporariesemail.eu.cc", "temporaries.email", "premiumify.eu.cc"];
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
