@@ -1,5 +1,5 @@
 export const DOMAINS = [
-  "uniquemethod.dpdns.org", "headquarters.eu.cc", "emporariesemail.eu.cc", "temporaries.email", "premiumify.eu.cc"
+  "uniquemethod.dpdns.org", "headquarters.eu.cc", "temporariesemail.eu.cc", "temporaries.email", "premiumify.eu.cc"
 ];
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
