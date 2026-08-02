@@ -1,5 +1,6 @@
 export interface Env {
   DB: D1Database;
+  ADMIN_PASSWORD: string;
 }
 
 const ALLOWED_DOMAINS = ["uniquemethod.dpdns.org", "headquarters.eu.cc", "temporariesemail.eu.cc", "temporaries.email", "premiumify.eu.cc"];
@@ -7,7 +8,7 @@ const ALLOWED_DOMAINS = ["uniquemethod.dpdns.org", "headquarters.eu.cc", "tempor
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Allow-Headers": "Content-Type, X-Admin-Password",
 };
 
 function json(data: unknown, status = 200) {
@@ -235,6 +236,37 @@ export default {
 
       if (request.method === "OPTIONS") {
         return new Response(null, { headers: corsHeaders });
+      }
+
+      // GET /api/admin/all — list all inboxes (admin only)
+      if (path === "/api/admin/all" && request.method === "GET") {
+        const pass = request.headers.get("X-Admin-Password");
+        if (pass !== env.ADMIN_PASSWORD) return json({ error: "Unauthorized" }, 401);
+
+        const { results } = await env.DB.prepare(
+          `SELECT to_address, COUNT(*) as count, MAX(received_at) as last_received
+           FROM emails GROUP BY to_address ORDER BY last_received DESC`
+        ).all();
+
+        return json(results || []);
+      }
+
+      // GET /api/admin/messages?email=... — messages for any address (admin only)
+      if (path === "/api/admin/messages" && request.method === "GET") {
+        const pass = request.headers.get("X-Admin-Password");
+        if (pass !== env.ADMIN_PASSWORD) return json({ error: "Unauthorized" }, 401);
+
+        const email = url.searchParams.get("email");
+        if (!email) return json({ error: "Missing email" }, 400);
+
+        const { results } = await env.DB.prepare(
+          `SELECT id, to_address, from_address, from_name, subject, preview, has_attachments, is_read, received_at
+           FROM emails WHERE to_address = ?
+           ORDER BY received_at DESC
+           LIMIT 50`
+        ).bind(email).all();
+
+        return json(results || []);
       }
 
       // GET /api/messages?email=...
