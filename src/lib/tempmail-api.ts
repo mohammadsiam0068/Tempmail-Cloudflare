@@ -126,3 +126,47 @@ export async function deleteEmail(email: string): Promise<void> {
     await fetch(`${API_BASE}/api/messages?email=${encodeURIComponent(email)}`, { method: "DELETE" });
   } catch {}
 }
+
+export interface AdminInboxSummary {
+  to_address: string;
+  count: number;
+  last_received: string;
+}
+
+export async function adminLogin(password: string): Promise<boolean> {
+  if (!API_BASE) return false;
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/all`, {
+      headers: { "X-Admin-Password": password },
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+export async function adminFetchAllInboxes(password: string): Promise<AdminInboxSummary[]> {
+  if (!API_BASE) return [];
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/all`, {
+      headers: { "X-Admin-Password": password },
+    });
+    if (!res.ok) return [];
+    return await res.json();
+  } catch {
+    return [];
+  }
+}
+
+export async function adminFetchMessages(password: string, email: string): Promise<EmailMessage[]> {
+  if (!API_BASE) return [];
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/messages?email=${encodeURIComponent(email)}`, {
+      headers: { "X-Admin-Password": password },
+    });
+    if (!res.ok) return [];
+    return await res.json();
+  } catch {
+    return [];
+  }
+}
