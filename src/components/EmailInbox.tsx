@@ -1,5 +1,7 @@
-import { Inbox, Clock, Paperclip, ChevronRight, MailOpen, RefreshCw } from "lucide-react";
+import { Inbox, Clock, Paperclip, ChevronRight, MailOpen, RefreshCw, Copy, Check } from "lucide-react";
 import { motion } from "framer-motion";
+import { useState, MouseEvent } from "react";
+import { toast } from "sonner";
 import { EmailMessage } from "@/lib/tempmail-api";
 import { timeAgo } from "@/lib/time";
 
@@ -31,7 +33,36 @@ function avatarColor(seed: string): string {
   return colors[Math.abs(hash) % colors.length];
 }
 
+function extractOtp(subject: string, preview: string): string | null {
+  const combined = `${subject}\n${preview}`;
+
+  const patterns = [
+    /(?:code|otp|pin|verification code|verify)[^\d]{0,15}(\d{4,8})\b/i,
+    /\b(\d{3}[- ]?\d{3})\b/,
+    /\b(\d{4,8})\b/,
+  ];
+
+  for (const pattern of patterns) {
+    const match = combined.match(pattern);
+    if (match && match[1]) {
+      const code = match[1].replace(/[-\s]/g, "");
+      if (code.length >= 4 && code.length <= 8) return code;
+    }
+  }
+  return null;
+}
+
 const EmailInbox = ({ messages, isRefreshing, onRefresh, onOpenMessage }: EmailInboxProps) => {
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const handleCopyOtp = async (e: MouseEvent, id: string, code: string) => {
+    e.stopPropagation();
+    await navigator.clipboard.writeText(code);
+    setCopiedId(id);
+    toast.success("Code copied!");
+    setTimeout(() => setCopiedId((prev) => (prev === id ? null : prev)), 2000);
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -84,6 +115,7 @@ const EmailInbox = ({ messages, isRefreshing, onRefresh, onOpenMessage }: EmailI
           <div className="divide-y divide-border">
             {messages.map((msg, i) => {
               const displayName = msg.from_name || msg.from_address.split("@")[0];
+              const otpCode = extractOtp(msg.subject || "", msg.preview || "");
               return (
                 <motion.button
                   key={msg.id}
@@ -140,6 +172,21 @@ const EmailInbox = ({ messages, isRefreshing, onRefresh, onOpenMessage }: EmailI
                             Attachment
                           </span>
                         </div>
+                      )}
+                      {otpCode && (
+                        <button
+                          onClick={(e) => handleCopyOtp(e, msg.id, otpCode)}
+                          className="flex items-center gap-1.5 mt-2 bg-primary/10 border border-primary/30 rounded-lg px-2.5 py-1 active:scale-95 transition-all"
+                        >
+                          <span className="font-mono text-xs font-bold text-foreground tracking-wider">
+                            {otpCode}
+                          </span>
+                          {copiedId === msg.id ? (
+                            <Check className="w-3 h-3 text-primary" />
+                          ) : (
+                            <Copy className="w-3 h-3 text-muted-foreground" />
+                          )}
+                        </button>
                       )}
                     </div>
 
