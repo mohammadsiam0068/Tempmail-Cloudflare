@@ -10,7 +10,7 @@ database_name = "tempmail-db"
 database_id = "cdf71667-7ddd-4311-8f0a-6360c8221b75"
 
 [triggers]
-crons = ["0 * * * *"]
+crons = ["*/10 * * * *"]
 
 
 
