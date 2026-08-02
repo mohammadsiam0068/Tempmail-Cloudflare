@@ -365,10 +365,10 @@ export default {
   async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
     try {
       await env.DB.prepare(
-        "DELETE FROM attachments WHERE email_id IN (SELECT id FROM emails WHERE received_at < datetime('now', '-1 hour'))"
+        "DELETE FROM attachments WHERE email_id IN (SELECT id FROM emails WHERE received_at < datetime('now', '-10 minutes'))"
       ).run();
       await env.DB.prepare(
-        "DELETE FROM emails WHERE received_at < datetime('now', '-1 hour')"
+        "DELETE FROM emails WHERE received_at < datetime('now', '-10 minutes')"
       ).run();
     } catch (e) {
       console.error("Cleanup error:", e);
