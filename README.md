@@ -259,7 +259,8 @@ Then bind the same database to the Pages project, exactly the same way:
 3. Go to **Settings → Bindings → Add Binding**
 4. Choose **D1 Database**
 5. Set:
-   - **Variable Name:** `DB`
+    
+    - **Variable Name:** `DB`
    - **Database:** select the same database (e.g. `tempmail-db`)
 6. Save changes
 
