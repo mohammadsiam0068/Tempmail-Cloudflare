@@ -81,7 +81,10 @@ Add the domain name(s) you want to use as your temporary email domains. This mus
 
 ---
 
-## 🗄️ Database Setup (Cloudflare D1)
+
+#
+
+# 🗄️ Database Setup (Cloudflare D1)
 
 ### 4️⃣ Create the D1 Database
 
