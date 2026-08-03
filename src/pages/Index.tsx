@@ -26,6 +26,13 @@ import SettingsView from "@/components/mobile/SettingsView";
 import PWAInstallBanner from "@/components/mobile/PWAInstallBanner";
 import notifySound from "@/assets/notify.mp3.asset.json";
 
+const EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
+
+function isExpired(receivedAt: string): boolean {
+  const received = new Date(receivedAt.replace(" ", "T") + "Z").getTime();
+  return Date.now() - received > EXPIRY_MS;
+}
+
 const Index = () => {
   const [currentEmail, setCurrentEmail] = useState<TempEmail | null>(null);
   const [messages, setMessages] = useState<EmailMessage[]>([]);
@@ -35,6 +42,7 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState<Tab>("inbox");
   const [isLoading, setIsLoading] = useState(true);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const expiryIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const knownIdsRef = useRef<Set<string>>(new Set());
   const initializedRef = useRef(false);
@@ -78,10 +86,12 @@ const Index = () => {
     setIsRefreshing(true);
     try {
       const msgs = await fetchMessages(currentEmail.address);
+      const activeMsgs = msgs.filter((m) => !isExpired(m.received_at));
+
       // Detect newly-arrived messages and play a notification sound.
       const known = knownIdsRef.current;
-      const incomingIds = msgs.map((m) => m.id);
-      const newOnes = msgs.filter((m) => !known.has(m.id));
+      const incomingIds = activeMsgs.map((m) => m.id);
+      const newOnes = activeMsgs.filter((m) => !known.has(m.id));
       if (initializedRef.current && newOnes.length > 0 && audioRef.current) {
         try {
           audioRef.current.currentTime = 0;
@@ -99,7 +109,7 @@ const Index = () => {
       }
       knownIdsRef.current = new Set(incomingIds);
       initializedRef.current = true;
-      setMessages(msgs);
+      setMessages(activeMsgs);
     } catch {
     } finally {
       setIsRefreshing(false);
@@ -114,6 +124,19 @@ const Index = () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [currentEmail, refreshMessages]);
+
+  // Periodically drop expired messages from the visible list without a network call
+  useEffect(() => {
+    expiryIntervalRef.current = setInterval(() => {
+      setMessages((prev) => {
+        const filtered = prev.filter((m) => !isExpired(m.received_at));
+        return filtered.length === prev.length ? prev : filtered;
+      });
+    }, 5000);
+    return () => {
+      if (expiryIntervalRef.current) clearInterval(expiryIntervalRef.current);
+    };
+  }, []);
 
   const setAndSaveEmail = (email: TempEmail, mode: EmailMode) => {
     // reset "seen" tracking so initial fetch of new inbox is silent
