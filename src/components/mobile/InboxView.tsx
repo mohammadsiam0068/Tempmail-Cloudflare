@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Copy, Check, Mail, RefreshCcw, QrCode, Link2, X, Download } from "lucide-react";
+import { Copy, Check, Mail, RefreshCcw, QrCode, Link2, X, Download, Timer } from "lucide-react";
 import { toast } from "sonner";
 import QRCode from "qrcode";
 import EmailInbox from "@/components/EmailInbox";
@@ -10,6 +10,8 @@ import { buildShareUrl } from "@/lib/share";
 
 interface InboxViewProps {
   email: string | null;
+  createdAt: number | null;
+  lifetimeMs: number;
   messages: EmailMessage[];
   isRefreshing: boolean;
   onRefresh: () => void;
@@ -19,8 +21,18 @@ interface InboxViewProps {
   onRegenerate: () => void;
 }
 
+function formatCountdown(remainingMs: number): string {
+  if (remainingMs <= 0) return "0:00";
+  const totalSec = Math.floor(remainingMs / 1000);
+  const min = Math.floor(totalSec / 60);
+  const sec = totalSec % 60;
+  return `${min}:${sec.toString().padStart(2, "0")}`;
+}
+
 const InboxView = ({
   email,
+  createdAt,
+  lifetimeMs,
   messages,
   isRefreshing,
   onRefresh,
@@ -34,8 +46,14 @@ const InboxView = ({
   const [spinRegen, setSpinRegen] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
   const [qrData, setQrData] = useState<string | null>(null);
+  const [now, setNow] = useState(Date.now());
 
   const shareUrl = email ? buildShareUrl(email) : "";
+
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
 
   useEffect(() => {
     if (!qrOpen || !shareUrl) return;
@@ -81,6 +99,9 @@ const InboxView = ({
     return <EmailViewer message={selectedMessage} onBack={onBack} />;
   }
 
+  const remainingMs = createdAt ? createdAt + lifetimeMs - now : 0;
+  const countdownLabel = formatCountdown(remainingMs);
+
   const actions = [
     {
       label: "Copy address",
@@ -114,6 +135,15 @@ const InboxView = ({
             </p>
           </div>
         </div>
+
+        {createdAt && (
+          <div className="flex items-center gap-1.5 px-3.5 pb-2.5">
+            <Timer className="w-3 h-3 text-amber-500/80" />
+            <span className="text-[10px] font-mono text-amber-500/80 font-medium">
+              New address in {countdownLabel}
+            </span>
+          </div>
+        )}
 
         {/* Action bar */}
         <div className="grid grid-cols-4 gap-2 px-3 pb-3 pt-1 border-t border-border/50">
