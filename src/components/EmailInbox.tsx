@@ -1,6 +1,6 @@
 import { Inbox, Clock, Paperclip, ChevronRight, MailOpen, RefreshCw, Copy, Check } from "lucide-react";
 import { motion } from "framer-motion";
-import { useState, MouseEvent } from "react";
+import { useState, useEffect, MouseEvent } from "react";
 import { toast } from "sonner";
 import { EmailMessage } from "@/lib/tempmail-api";
 import { timeAgo } from "@/lib/time";
@@ -13,6 +13,8 @@ interface EmailInboxProps {
   selectedMessage: EmailMessage | null;
   onBack: () => void;
 }
+
+const EXPIRY_MS = 10 * 60 * 1000;
 
 function getInitial(name: string) {
   return (name || "?").trim().charAt(0).toUpperCase();
@@ -52,8 +54,24 @@ function extractOtp(subject: string, preview: string): string | null {
   return null;
 }
 
+function getRemainingLabel(receivedAt: string, now: number): string {
+  const received = new Date(receivedAt.replace(" ", "T") + "Z").getTime();
+  const remaining = received + EXPIRY_MS - now;
+  if (remaining <= 0) return "Expiring...";
+  const totalSec = Math.floor(remaining / 1000);
+  const min = Math.floor(totalSec / 60);
+  const sec = totalSec % 60;
+  return `${min}:${sec.toString().padStart(2, "0")}`;
+}
+
 const EmailInbox = ({ messages, isRefreshing, onRefresh, onOpenMessage }: EmailInboxProps) => {
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
 
   const handleCopyOtp = async (e: MouseEvent, id: string, code: string) => {
     e.stopPropagation();
@@ -116,6 +134,7 @@ const EmailInbox = ({ messages, isRefreshing, onRefresh, onOpenMessage }: EmailI
             {messages.map((msg, i) => {
               const displayName = msg.from_name || msg.from_address.split("@")[0];
               const otpCode = extractOtp(msg.subject || "", msg.preview || "");
+              const remainingLabel = getRemainingLabel(msg.received_at, now);
               return (
                 <motion.button
                   key={msg.id}
@@ -165,14 +184,19 @@ const EmailInbox = ({ messages, isRefreshing, onRefresh, onOpenMessage }: EmailI
                       <p className="text-xs text-muted-foreground truncate leading-relaxed">
                         {msg.preview}
                       </p>
-                      {msg.has_attachments && (
-                        <div className="flex items-center gap-1.5 mt-1.5">
-                          <Paperclip className="w-3 h-3 text-primary/60" />
-                          <span className="text-[10px] text-primary/70 font-medium">
-                            Attachment
-                          </span>
-                        </div>
-                      )}
+                      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                        {msg.has_attachments && (
+                          <div className="flex items-center gap-1.5">
+                            <Paperclip className="w-3 h-3 text-primary/60" />
+                            <span className="text-[10px] text-primary/70 font-medium">
+                              Attachment
+                            </span>
+                          </div>
+                        )}
+                        <span className="text-[10px] text-amber-500/80 font-mono font-medium">
+                          Expires in {remainingLabel}
+                        </span>
+                      </div>
                       {otpCode && (
                         <button
                           onClick={(e) => handleCopyOtp(e, msg.id, otpCode)}
