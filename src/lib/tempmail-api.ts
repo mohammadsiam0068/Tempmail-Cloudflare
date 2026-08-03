@@ -7,6 +7,7 @@ const API_BASE = import.meta.env.VITE_API_URL || "";
 export interface TempEmail {
   address: string;
   domain: string;
+  createdAt: number;
 }
 
 export interface EmailAttachment {
@@ -43,7 +44,7 @@ function generateRandomString(length: number): string {
 export function generateTempEmail(): TempEmail {
   const username = generateRandomString(10);
   const domain = DOMAINS[Math.floor(Math.random() * DOMAINS.length)];
-  return { address: `${username}@${domain}`, domain };
+  return { address: `${username}@${domain}`, domain, createdAt: Date.now() };
 }
 
 let namesCache: string[] | null = null;
@@ -65,11 +66,11 @@ export async function generateNaturalEmail(): Promise<TempEmail> {
   const digits = Math.floor(Math.random() * 900) + 100;
   const username = `${name}${digits}`;
   const domain = DOMAINS[Math.floor(Math.random() * DOMAINS.length)];
-  return { address: `${username}@${domain}`, domain };
+  return { address: `${username}@${domain}`, domain, createdAt: Date.now() };
 }
 
 export function generateCustomEmail(username: string, domain: string): TempEmail {
-  return { address: `${username}@${domain}`, domain };
+  return { address: `${username}@${domain}`, domain, createdAt: Date.now() };
 }
 
 const STORAGE_KEY = "ahcmail_current_email";
@@ -84,7 +85,11 @@ export function loadEmailFromStorage(): { email: TempEmail; mode: string } | nul
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     const mode = localStorage.getItem(STORAGE_MODE_KEY) || "random";
-    if (raw) return { email: JSON.parse(raw), mode };
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (!parsed.createdAt) parsed.createdAt = Date.now();
+      return { email: parsed, mode };
+    }
   } catch {}
   return null;
 }
