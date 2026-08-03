@@ -395,16 +395,9 @@ export default {
   },
 
   async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
-    try {
-      await env.DB.prepare(
-        "DELETE FROM attachments WHERE email_id IN (SELECT id FROM emails WHERE received_at < datetime('now', '-10 minutes'))"
-      ).run();
-      await env.DB.prepare(
-        "DELETE FROM emails WHERE received_at < datetime('now', '-10 minutes')"
-      ).run();
-    } catch (e) {
-      console.error("Cleanup error:", e);
-    }
+    // Emails are kept permanently in the database.
+    // Expiry from the user-facing inbox is handled on the frontend (10-minute window),
+    // and the Admin panel can still access every email regardless of age.
   }
 
 } satisfies ExportedHandler<Env>;
