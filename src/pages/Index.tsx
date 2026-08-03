@@ -26,42 +26,35 @@ import SettingsView from "@/components/mobile/SettingsView";
 import PWAInstallBanner from "@/components/mobile/PWAInstallBanner";
 import notifySound from "@/assets/notify.mp3.asset.json";
 
-const EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
-
-function isExpired(receivedAt: string): boolean {
-  const received = new Date(receivedAt.replace(" ", "T") + "Z").getTime();
-  return Date.now() - received > EXPIRY_MS;
-}
+const ADDRESS_LIFETIME_MS = 10 * 60 * 1000; // 10 minutes
 
 const Index = () => {
   const [currentEmail, setCurrentEmail] = useState<TempEmail | null>(null);
   const [messages, setMessages] = useState<EmailMessage[]>([]);
   const [selectedMessage, setSelectedMessage] = useState<EmailMessage | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [emailMode, setEmailMode] = useState<EmailMode>("random");
+  const [emailMode, setEmailMode] = useState<EmailMode>("natural");
   const [activeTab, setActiveTab] = useState<Tab>("inbox");
   const [isLoading, setIsLoading] = useState(true);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const expiryIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const expiryCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const knownIdsRef = useRef<Set<string>>(new Set());
   const initializedRef = useRef(false);
   const { theme, toggleTheme } = useTheme();
 
-  // Preload notification sound
-  
   useEffect(() => {
-  const a = new Audio("/notify.mp3");
-  a.preload = "auto";
-  a.volume = 0.85;
-  audioRef.current = a;
-}, []);
+    const a = new Audio("/notify.mp3");
+    a.preload = "auto";
+    a.volume = 0.85;
+    audioRef.current = a;
+  }, []);
 
   useEffect(() => {
     const param = new URLSearchParams(window.location.search).get("email");
     const shared = param ? decodeEmailParam(param) : null;
     if (shared) {
-      const email: TempEmail = { address: shared, domain: shared.split("@")[1] || "" };
+      const email: TempEmail = { address: shared, domain: shared.split("@")[1] || "", createdAt: Date.now() };
       setCurrentEmail(email);
       setEmailMode("custom");
       saveEmailToStorage(email, "custom");
@@ -69,29 +62,29 @@ const Index = () => {
     } else {
       const saved = loadEmailFromStorage();
       if (saved) {
-        setCurrentEmail(saved.email);
-        setEmailMode(saved.mode as EmailMode);
+        const age = Date.now() - saved.email.createdAt;
+        if (age >= ADDRESS_LIFETIME_MS) {
+          handleGenerate("natural");
+        } else {
+          setCurrentEmail(saved.email);
+          setEmailMode(saved.mode as EmailMode);
+        }
       } else {
         handleGenerate("natural");
       }
     }
-    // Preloader for 1.4s minimum for stylish feel
     const t = setTimeout(() => setIsLoading(false), 1400);
     return () => clearTimeout(t);
   }, []);
-
 
   const refreshMessages = useCallback(async () => {
     if (!currentEmail) return;
     setIsRefreshing(true);
     try {
       const msgs = await fetchMessages(currentEmail.address);
-      const activeMsgs = msgs.filter((m) => !isExpired(m.received_at));
-
-      // Detect newly-arrived messages and play a notification sound.
       const known = knownIdsRef.current;
-      const incomingIds = activeMsgs.map((m) => m.id);
-      const newOnes = activeMsgs.filter((m) => !known.has(m.id));
+      const incomingIds = msgs.map((m) => m.id);
+      const newOnes = msgs.filter((m) => !known.has(m.id));
       if (initializedRef.current && newOnes.length > 0 && audioRef.current) {
         try {
           audioRef.current.currentTime = 0;
@@ -109,7 +102,7 @@ const Index = () => {
       }
       knownIdsRef.current = new Set(incomingIds);
       initializedRef.current = true;
-      setMessages(activeMsgs);
+      setMessages(msgs);
     } catch {
     } finally {
       setIsRefreshing(false);
@@ -125,21 +118,21 @@ const Index = () => {
     };
   }, [currentEmail, refreshMessages]);
 
-  // Periodically drop expired messages from the visible list without a network call
+  // Auto-expire the address itself after ADDRESS_LIFETIME_MS, regardless of messages
   useEffect(() => {
-    expiryIntervalRef.current = setInterval(() => {
-      setMessages((prev) => {
-        const filtered = prev.filter((m) => !isExpired(m.received_at));
-        return filtered.length === prev.length ? prev : filtered;
-      });
-    }, 5000);
+    expiryCheckRef.current = setInterval(() => {
+      if (!currentEmail) return;
+      const age = Date.now() - currentEmail.createdAt;
+      if (age >= ADDRESS_LIFETIME_MS) {
+        handleGenerate(emailMode === "custom" ? "natural" : emailMode);
+      }
+    }, 1000);
     return () => {
-      if (expiryIntervalRef.current) clearInterval(expiryIntervalRef.current);
+      if (expiryCheckRef.current) clearInterval(expiryCheckRef.current);
     };
-  }, []);
+  }, [currentEmail, emailMode]);
 
   const setAndSaveEmail = (email: TempEmail, mode: EmailMode) => {
-    // reset "seen" tracking so initial fetch of new inbox is silent
     knownIdsRef.current = new Set();
     initializedRef.current = false;
     setCurrentEmail(email);
@@ -209,9 +202,7 @@ const Index = () => {
     <>
       <AnimatePresence>{isLoading && <Preloader />}</AnimatePresence>
 
-      {/* App Shell */}
       <div className="min-h-screen bg-background flex justify-center">
-        {/* Mobile-app container: full width on mobile, framed on desktop */}
         <div className="w-full max-w-md relative min-h-screen bg-background md:border-x md:border-border flex flex-col">
           <TopBar
             title="AHC Mail"
@@ -220,7 +211,6 @@ const Index = () => {
             onToggleTheme={toggleTheme}
           />
 
-          {/* Content area - scrollable */}
           <main className="flex-1 overflow-y-auto pb-24">
             <AnimatePresence mode="wait">
               <motion.div
@@ -233,6 +223,8 @@ const Index = () => {
                 {activeTab === "inbox" && (
                   <InboxView
                     email={currentEmail?.address ?? null}
+                    createdAt={currentEmail?.createdAt ?? null}
+                    lifetimeMs={ADDRESS_LIFETIME_MS}
                     messages={messages}
                     isRefreshing={isRefreshing}
                     onRefresh={refreshMessages}
