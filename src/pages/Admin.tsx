@@ -24,6 +24,7 @@ const Admin = () => {
   const [messages, setMessages] = useState<EmailMessage[]>([]);
   const [selectedMessage, setSelectedMessage] = useState<EmailMessage | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [manualEmail, setManualEmail] = useState("");
 
   useEffect(() => {
     const saved = sessionStorage.getItem(SESSION_KEY);
@@ -77,6 +78,12 @@ const Admin = () => {
     if (!selectedEmail) return;
     const msg = await fetchMessage(selectedEmail, id);
     if (msg) setSelectedMessage(msg);
+  };
+
+  const handleManualOpen = () => {
+    const trimmed = manualEmail.trim();
+    if (!trimmed) return;
+    openInbox(trimmed);
   };
 
   if (!authed) {
@@ -162,6 +169,23 @@ const Admin = () => {
         </div>
 
         <div className="px-4 py-4">
+          <div className="flex gap-2 mb-3">
+            <input
+              type="text"
+              value={manualEmail}
+              onChange={(e) => setManualEmail(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleManualOpen()}
+              placeholder="Enter any email to force-open"
+              className="flex-1 bg-secondary rounded-xl px-3 py-2 text-xs font-mono outline-none border border-border focus:border-primary"
+            />
+            <button
+              onClick={handleManualOpen}
+              className="bg-primary text-primary-foreground rounded-xl px-4 py-2 text-xs font-semibold active:scale-95 transition-all"
+            >
+              Open
+            </button>
+          </div>
+
           <button
             onClick={loadInboxes}
             disabled={refreshing}
