@@ -32,6 +32,35 @@ export interface EmailMessage {
   attachments?: EmailAttachment[];
 }
 
+const DOMAIN_PREF_KEY = "ahcmail_selected_domains";
+
+export function getSelectedDomains(): string[] {
+  try {
+    const raw = localStorage.getItem(DOMAIN_PREF_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as string[];
+      const valid = parsed.filter((d) => DOMAINS.includes(d));
+      if (valid.length > 0) return valid;
+    }
+  } catch {}
+  return [...DOMAINS];
+}
+
+export function setSelectedDomains(domains: string[]) {
+  const valid = domains.filter((d) => DOMAINS.includes(d));
+  const toSave = valid.length > 0 ? valid : [...DOMAINS];
+  localStorage.setItem(DOMAIN_PREF_KEY, JSON.stringify(toSave));
+}
+
+function getActiveDomains(): string[] {
+  return getSelectedDomains();
+}
+
+function pickRandomDomain(): string {
+  const active = getActiveDomains();
+  return active[Math.floor(Math.random() * active.length)];
+}
+
 function generateRandomString(length: number): string {
   const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
   let result = "";
@@ -43,7 +72,7 @@ function generateRandomString(length: number): string {
 
 export function generateTempEmail(): TempEmail {
   const username = generateRandomString(10);
-  const domain = DOMAINS[Math.floor(Math.random() * DOMAINS.length)];
+  const domain = pickRandomDomain();
   return { address: `${username}@${domain}`, domain, createdAt: Date.now() };
 }
 
@@ -65,7 +94,7 @@ export async function generateNaturalEmail(): Promise<TempEmail> {
   const name = names[Math.floor(Math.random() * names.length)].toLowerCase();
   const digits = Math.floor(Math.random() * 900) + 100;
   const username = `${name}${digits}`;
-  const domain = DOMAINS[Math.floor(Math.random() * DOMAINS.length)];
+  const domain = pickRandomDomain();
   return { address: `${username}@${domain}`, domain, createdAt: Date.now() };
 }
 
