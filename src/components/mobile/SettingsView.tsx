@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Sun, Moon, Trash2, Info, Shield, Clock, Github, ExternalLink } from "lucide-react";
-import { DOMAINS } from "@/lib/tempmail-api";
+import { DOMAINS, getSelectedDomains, setSelectedDomains } from "@/lib/tempmail-api";
 
 interface SettingsViewProps {
   theme: "light" | "dark";
@@ -9,6 +10,23 @@ interface SettingsViewProps {
 }
 
 const SettingsView = ({ theme, onToggleTheme, onDelete }: SettingsViewProps) => {
+  const [selected, setSelected] = useState<string[]>(getSelectedDomains());
+
+  const toggleDomain = (domain: string) => {
+    setSelected((prev) => {
+      const isSelected = prev.includes(domain);
+      let next: string[];
+      if (isSelected) {
+        if (prev.length === 1) return prev; // keep at least one active
+        next = prev.filter((d) => d !== domain);
+      } else {
+        next = [...prev, domain];
+      }
+      setSelectedDomains(next);
+      return next;
+    });
+  };
+
   return (
     <div className="px-4 py-4 space-y-6">
       {/* Header */}
@@ -110,9 +128,9 @@ const SettingsView = ({ theme, onToggleTheme, onDelete }: SettingsViewProps) => 
               <Clock className="w-4 h-4 text-primary" />
             </div>
             <div className="flex-1">
-              <p className="text-sm font-semibold">Auto-Deleted</p>
+              <p className="text-sm font-semibold">Auto-Expires</p>
               <p className="text-xs text-muted-foreground">
-                Emails wiped after 1 hour
+                New address every 10 minutes
               </p>
             </div>
           </div>
@@ -121,9 +139,9 @@ const SettingsView = ({ theme, onToggleTheme, onDelete }: SettingsViewProps) => 
               <Info className="w-4 h-4 text-primary" />
             </div>
             <div className="flex-1">
-              <p className="text-sm font-semibold">{DOMAINS.length} Domains</p>
+              <p className="text-sm font-semibold">{selected.length} of {DOMAINS.length} Domains</p>
               <p className="text-xs text-muted-foreground">
-                Available for random selection
+                Active for random selection
               </p>
             </div>
           </div>
@@ -137,17 +155,25 @@ const SettingsView = ({ theme, onToggleTheme, onDelete }: SettingsViewProps) => 
         transition={{ delay: 0.2 }}
       >
         <h3 className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2 px-1">
-          Available Domains
+          Domains — tap to include/exclude
         </h3>
         <div className="rounded-2xl bg-card border border-border p-3 flex flex-wrap gap-1.5">
-          {DOMAINS.map((d) => (
-            <span
-              key={d}
-              className="text-[10px] font-mono px-2.5 py-1 rounded-lg bg-secondary text-muted-foreground border border-border/50"
-            >
-              @{d}
-            </span>
-          ))}
+          {DOMAINS.map((d) => {
+            const isActive = selected.includes(d);
+            return (
+              <button
+                key={d}
+                onClick={() => toggleDomain(d)}
+                className={`text-[10px] font-mono px-2.5 py-1 rounded-lg border transition-all active:scale-95 ${
+                  isActive
+                    ? "bg-primary/15 text-primary border-primary/40"
+                    : "bg-secondary text-muted-foreground/50 border-border/50 line-through"
+                }`}
+              >
+                @{d}
+              </button>
+            );
+          })}
         </div>
       </motion.section>
 
